@@ -1,0 +1,5 @@
+result
+venv/
+
+# until i get everything working
+requirements.nix
