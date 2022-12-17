@@ -1,3 +1,5 @@
+from __future__ import annotation
+
 import subprocess
 import sys
 import textwrap
@@ -32,11 +34,67 @@ from packaging.version import Version
 
 
 @dataclass
+class NixSystem:
+    architecture: str
+    # TODO: rename this to be operating system when i have my LSP up and running again
+    platform: str
+
+    @property
+    def python_architecture(self) -> str:
+        if self.architecture == "aarch64":
+            return "arm64"
+        return self.architecture
+
+    @staticmethod
+    def parse(raw_nix_system: str) -> NixSystem:
+        architecture, _, platform = raw_nix_system.partition("-")
+        return NixSystem(
+            architecture=architecture,
+            platform=platform,
+        )
+
+
+@dataclass
 class WheelInfo:
     dist: str
     python: str
     abi: str
     platform: str
+
+    def compatible_with_nix_system(self, nix_system: NixSystem) -> bool:
+        operating_system, architecture = self.split_platform()
+        if nix_system.platform == "darwin":
+            if not operating_system.startswith("macosx"):
+                return False
+        elif nix_system.platform == "linux":
+            if (
+                not operating_system.startswith("linux")
+                and not operating_system.startswith("manylinux")
+            ):
+                return False
+        else:
+            # TODO: exception type
+            raise Exception(f"unknown platform: {nix_system.platform}")
+
+        if "architecture" != "any" and nix_system.python_architecture != architecture:
+            return False
+
+        return True
+
+    def split_platform(self) -> tuple[str, str]:
+        if self.platform == "any":
+            return ("any", "any")
+
+        if self.platform.endswith("x86_64"):
+            # `x86_64` is the only architecture which includes a `_`
+            # so we can't use a sane `rpartition("_")` strategy on it
+            # so we special case it instead!
+            operating_system = self.platform[:-len("x86_64")]
+            architecture = "x86_64"
+        else:
+            operating_system, _, architecture = self.platform.rpartition("_")
+
+        return operating_system, architecture
 
     def render(self) -> str:
         template = """\
@@ -61,24 +119,6 @@ class PythonPackage:
     version: Version
     sha256: str
     wheel_info: WheelInfo | None = None
-
-    def compatible_with_nix_system(self, nix_system: str) -> bool:
-        if self.wheel_info is not None:
-            return True
-
-        # TODO: implement
-        #
-        # - parse nix system names
-        # - map system name parts (CPU architecture, OS) onto wheel parts
-        #   - wheel parts are going to be hard,
-        #     e.g. `manylinux` doesn't guarantee that it'll work
-        #     because it depends on the specific distribution of linux...
-        # - return true if system names = wheel tags
-        # - include assumptions:
-        #   - current python interpreter = runtime python interpreter
-        #   - also means current ABI = runtime python ABI
-        #
-        return False
 
     def render(self) -> str:
         template = """\
