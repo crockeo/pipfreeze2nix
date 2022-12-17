@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -82,7 +83,7 @@ FILE_TPL = """\
 
 
 PACKAGE_TPL = """\
-python.buildPythonPackage rec {{
+(python.pkgs.buildPythonPackage rec {{
   pname = "{pname}";
   version = "{version}";
 
@@ -90,7 +91,7 @@ python.buildPythonPackage rec {{
     inherit pname version;
     sha256 = "{sha256}";
   }};
-}}
+}})
 """
 
 
@@ -129,10 +130,13 @@ def main(args: list[str]) -> None:
         for req in requirements
     ]
     packages = [
-        PACKAGE_TPL.format(
-            pname=req_info.pname,
-            version=req_info.version,
-            sha256=req_info.sha256,
+        textwrap.indent(
+            PACKAGE_TPL.format(
+                pname=req_info.pname,
+                version=req_info.version,
+                sha256=req_info.sha256,
+            ),
+            prefix="  ",
         )
         for req_info in req_infos
     ]

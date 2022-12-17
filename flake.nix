@@ -11,21 +11,17 @@
         python = pkgs.python310;
       in
       rec {
-        defaultPackage = pkgs.python310.pkgs.buildPythonApplication {
+        defaultPackage = python.pkgs.buildPythonApplication {
           pname = "pipfreeze2nix";
-          version = "0.0.0";
+          version = "0.1.0";
 
           src = ./src;
 
           # TODO: make these the contents of requirements.nix
-          propagatedBuildInputs = [
-            python.pkgs.certifi
-            python.pkgs.charset-normalizer
-            python.pkgs.idna
-            python.pkgs.packaging
-            python.pkgs.requests
-            python.pkgs.urllib3
-          ];
+          propagatedBuildInputs = pkgs.callPackage ./requirements.nix {
+            inherit python;
+            nixpkgs = pkgs;
+          };
         };
       }
     );
