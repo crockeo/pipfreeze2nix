@@ -8,14 +8,94 @@ import requests
 from packaging.requirements import Requirement
 from packaging.requirements import InvalidRequirement
 from packaging.utils import canonicalize_name
+from packaging.utils import parse_wheel_filename
+from packaging.version import Version
 
 
-def parse_pinned_version(req: Requirement) -> str:
+# ok...trying to make this work with wheels is going to be fun :)
+#
+# 1. assume that the python used to build requirements.nix
+#    is the same python that will be used to run the project
+#
+# 2. need to implement PEP <whatever> simple server parsing
+#    and then find all available wheels for a pinned version of a thing
+#
+# 3. need to map from wheel name to nix system name
+#    e.g.
+
+# aarch64-darwin maps onto macosx_<number>_<number>-arm64.whl
+#  - zope.interface-5.4.0-cp38-cp38-macosx_10_14_arm64.whl (217 kB)
+#  - zope.interface-5.4.0-cp38-cp38-macosx_10_14_x86_64.whl (208 kB)
+#
+# arm64 -> aarch64
+# x86_64 -> x86_64
+
+
+@dataclass
+class WheelInfo:
+    dist: str
+    python: str
+    abi: str
+    platform: str
+
+    def render(self) -> str:
+        template = """\
+        format = "wheel";
+        dist = "{dist}";
+        python = "{python}";
+        abi = "{abi}";
+        platform = "{platform}";
+        """
+        template = textwrap.dedent(template)
+        return template.format(
+            dist=self.dist,
+            python=self.python,
+            abi=self.abi,
+            platform=self.platform,
+        )
+
+
+@dataclass
+class PythonPackage:
+    name: str
+    version: Version
+    sha256: str
+    wheel_info: WheelInfo | None = None
+
+    def render(self) -> str:
+        template = """\
+        (python.pkgs.buildPythonPackage rec {{
+          pname = "{name}";
+          version = "{version}";
+
+          src = python.pkgs.fetchPypi {{
+            inherit pname version;
+            sha256 = "{sha256}";
+            {format_info}
+          }};
+        }})
+        """
+        template = textwrap.dedent(template)
+
+        if self.wheel_info is None:
+            format_info = "format = \"setuptools\";"
+        else:
+            format_info = textwrap.indent(wheel_info.render(), prefix="    ")
+
+        return template.format(
+            name=self.name,
+            version=self.version,
+            sha256=self.sha256,
+            format_info=format_info,
+        )
+
+
+def parse_pinned_version(req: Requirement) -> Version:
     for specifier in req.specifier:
         if specifier.operator != "==":
             # TODO: type
             raise Exception("invalid specifier, not pinned")
-        return specifier.version
+        return Version(specifier.version)
     raise Exception("no specifiers")
 
 
@@ -51,24 +131,19 @@ def fetch_requirement(req: Requirement) -> Path:
     return req_cache_path
 
 
-@dataclass
-class RequirementInfo:
-    pname: str
-    version: str
-    sha256: str
-
-
-def fetch_requirement_info(req: Requirement) -> RequirementInfo:
+def fetch_python_package(req: Requirement) -> PythonPackage:
     path = fetch_requirement(req)
 
+    # TODO: don't shell out to sha256sum for this,
+    # do it in-process instead!
     sha256 = subprocess.check_output(
         ("sha256sum", path),
         text=True,
     )
     sha256, _, _ = sha256.partition("  ")
 
-    return RequirementInfo(
-        pname=req.name,
+    return PythonPackage(
+        name=req.name,
         version=parse_pinned_version(req),
         sha256=sha256,
     )
@@ -79,19 +154,6 @@ FILE_TPL = """\
 [
   {package_list}\
 ]
-"""
-
-
-PACKAGE_TPL = """\
-(python.pkgs.buildPythonPackage rec {{
-  pname = "{pname}";
-  version = "{version}";
-
-  src = python.pkgs.fetchPypi {{
-    inherit pname version;
-    sha256 = "{sha256}";
-  }};
-}})
 """
 
 
@@ -125,20 +187,13 @@ def main(args: list[str]) -> None:
 
         requirements.append(req)
 
-    req_infos = [
-        fetch_requirement_info(req)
+    python_packages = [
+        fetch_python_package(req)
         for req in requirements
     ]
     packages = [
-        textwrap.indent(
-            PACKAGE_TPL.format(
-                pname=req_info.pname,
-                version=req_info.version,
-                sha256=req_info.sha256,
-            ),
-            prefix="  ",
-        )
-        for req_info in req_infos
+        textwrap.indent(python_package.render(), "  ")
+        for python_package in python_packages
     ]
 
     out_file.write_text(FILE_TPL.format(package_list="".join(packages)))
