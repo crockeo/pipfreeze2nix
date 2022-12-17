@@ -62,6 +62,13 @@ class WheelInfo:
     platform: str
 
     def compatible_with_nix_system(self, nix_system: NixSystem) -> bool:
+        # TODO: have a more rigid set of tags which are compatible
+        # packaging.tags has
+        #
+        # - mac_platforms
+        # - _linux_platforms
+        #
+        # which can list available platforms
         operating_system, architecture = self.split_platform()
         if nix_system.platform == "darwin":
             if not operating_system.startswith("macosx"):
