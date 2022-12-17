@@ -77,7 +77,7 @@ def fetch_requirement_info(req: Requirement) -> RequirementInfo:
 FILE_TPL = """\
 {{ python, nixpkgs }}:
 [
-  {package_list}
+  {package_list}\
 ]
 """
 

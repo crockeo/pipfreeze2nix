@@ -54,5 +54,4 @@
       sha256 = "c083dd0dce68dbfbe1129d5271cb90f9447dea7d52097c6e0126120c521ddea8";
     };
   })
-
 ]
