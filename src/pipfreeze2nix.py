@@ -9,9 +9,16 @@ from pathlib import Path
 import requests
 from packaging.requirements import Requirement
 from packaging.requirements import InvalidRequirement
+from packaging.tags import sys_tags
+from packaging.tags import Tag
 from packaging.utils import canonicalize_name
 from packaging.utils import parse_wheel_filename
 from packaging.version import Version
+
+
+# (done) step 0) get it working with sdists
+# step 1) get it working with wheels on current platform
+# step 2) get it working with wheels across multiple platforms
 
 
 # ok...trying to make this work with wheels is going to be fun :)
@@ -34,79 +41,15 @@ from packaging.version import Version
 
 
 @dataclass
-class NixSystem:
-    architecture: str
-    # TODO: rename this to be operating system when i have my LSP up and running again
-    platform: str
-
-    @property
-    def python_architecture(self) -> str:
-        if self.architecture == "aarch64":
-            return "arm64"
-        return self.architecture
-
-    @staticmethod
-    def parse(raw_nix_system: str) -> NixSystem:
-        architecture, _, platform = raw_nix_system.partition("-")
-        return NixSystem(
-            architecture=architecture,
-            platform=platform,
-        )
-
-
-@dataclass
 class WheelInfo:
-    dist: str
+    # TODO: do we need `dist` here?
     python: str
     abi: str
     platform: str
 
-    def compatible_with_nix_system(self, nix_system: NixSystem) -> bool:
-        # TODO: have a more rigid set of tags which are compatible
-        # packaging.tags has
-        #
-        # - mac_platforms
-        # - _linux_platforms
-        #
-        # which can list available platforms
-        operating_system, architecture = self.split_platform()
-        if nix_system.platform == "darwin":
-            if not operating_system.startswith("macosx"):
-                return False
-        elif nix_system.platform == "linux":
-            if (
-                not operating_system.startswith("linux")
-                and not operating_system.startswith("manylinux")
-            ):
-                return False
-        else:
-            # TODO: exception type
-            raise Exception(f"unknown platform: {nix_system.platform}")
-
-        if "architecture" != "any" and nix_system.python_architecture != architecture:
-            return False
-
-        return True
-
-    def split_platform(self) -> tuple[str, str]:
-        if self.platform == "any":
-            return ("any", "any")
-
-        if self.platform.endswith("x86_64"):
-            # `x86_64` is the only architecture which includes a `_`
-            # so we can't use a sane `rpartition("_")` strategy on it
-            # so we special case it instead!
-            operating_system = self.platform[:-len("x86_64")]
-            architecture = "x86_64"
-        else:
-            operating_system, _, architecture = self.platform.rpartition("_")
-
-        return operating_system, architecture
-
     def render(self) -> str:
         template = """\
         format = "wheel";
-        dist = "{dist}";
         python = "{python}";
         abi = "{abi}";
         platform = "{platform}";
@@ -118,6 +61,42 @@ class WheelInfo:
             abi=self.abi,
             platform=self.platform,
         )
+
+
+def get_wheels(name: str) -> list[str]:
+    # TODO: implement simple server parsing here to fetch available wheels
+    raise NotImplementedError
+
+
+def get_compatible_wheels(name: str, version: Version) -> list[WheelInfo]:
+    available_wheels = get_wheels(name)
+
+    compatible_tags = set(sys_tags())
+    compatible_wheels = []
+    for wheel in available_wheels:
+        name, version, _, tags = parse_wheel_filename(wheel)
+        if version != version:
+            continue
+
+        if len(tags) != 1:
+            # nix can only handle wheels that have one tag in their tag set.
+            # This constraint comes from how nix constructs wheel URLs.
+            # One would need to upstream a fix to nixpkgs to fix this.
+            continue
+
+        for tag in tags:
+            break
+        if tag not in compatible_tags:
+            continue
+
+        compatible_wheels.append(
+            WheelInfo(
+                python=tag.interpreter,
+                abi=tag.abi,
+                platofrm=tag.platform,
+            )
+        )
+    return compatible_wheels
 
 
 @dataclass
