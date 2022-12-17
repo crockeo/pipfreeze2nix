@@ -17,7 +17,6 @@
 
           src = ./src;
 
-          # TODO: make these the contents of requirements.nix
           propagatedBuildInputs = pkgs.callPackage ./requirements.nix {
             inherit python;
             nixpkgs = pkgs;

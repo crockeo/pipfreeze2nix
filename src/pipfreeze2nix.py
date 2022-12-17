@@ -62,6 +62,24 @@ class PythonPackage:
     sha256: str
     wheel_info: WheelInfo | None = None
 
+    def compatible_with_nix_system(self, nix_system: str) -> bool:
+        if self.wheel_info is not None:
+            return True
+
+        # TODO: implement
+        #
+        # - parse nix system names
+        # - map system name parts (CPU architecture, OS) onto wheel parts
+        #   - wheel parts are going to be hard,
+        #     e.g. `manylinux` doesn't guarantee that it'll work
+        #     because it depends on the specific distribution of linux...
+        # - return true if system names = wheel tags
+        # - include assumptions:
+        #   - current python interpreter = runtime python interpreter
+        #   - also means current ABI = runtime python ABI
+        #
+        return False
+
     def render(self) -> str:
         template = """\
         (python.pkgs.buildPythonPackage rec {{
@@ -96,6 +114,7 @@ def parse_pinned_version(req: Requirement) -> Version:
             # TODO: type
             raise Exception("invalid specifier, not pinned")
         return Version(specifier.version)
+    # TODO: type
     raise Exception("no specifiers")
 
 
