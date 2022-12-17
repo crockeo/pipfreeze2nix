@@ -1,4 +1,4 @@
-from __future__ import annotation
+from __future__ import annotations
 
 import subprocess
 import sys
@@ -105,6 +105,22 @@ class PythonPackage:
     version: Version
     sha256: str
     wheel_info: WheelInfo | None = None
+
+    def compute_url(self) -> str:
+        # Logic taken from the nixpkgs fetchPypi implementation.
+        # This is to ensure we always use the same artifact as nix.
+        first_letter = self.name[0]
+        name = self.name
+        version = self.version
+        if self.wheel_info is None:
+            return f"https://files.pythonhosted.org/source/{first_letter}/{name}/{name}-{version}.tar.gz"
+
+        python = self.wheel_info.python
+        abi = self.wheel_info.abi
+        platform = self.wheel_info.platform
+        return (
+            f"https://files.pythonhosted.org/packages/py2.py3/{first_letter}/{name}/{name}-{version}-{python}-{abi}-{platform}.whl"
+        )
 
     def render(self) -> str:
         template = """\
