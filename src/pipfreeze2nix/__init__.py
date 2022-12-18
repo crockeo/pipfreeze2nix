@@ -10,7 +10,6 @@ import requests
 from packaging.requirements import Requirement
 from packaging.requirements import InvalidRequirement
 from packaging.tags import sys_tags
-from packaging.tags import Tag
 from packaging.utils import canonicalize_name
 from packaging.utils import parse_wheel_filename
 from packaging.version import Version
@@ -56,7 +55,6 @@ class WheelInfo:
         """
         template = textwrap.dedent(template)
         return template.format(
-            dist=self.dist,
             python=self.python,
             abi=self.abi,
             platform=self.platform,
@@ -89,6 +87,9 @@ def get_compatible_wheels(name: str, version: Version) -> list[WheelInfo]:
 
         for tag in tags:
             break
+        else:
+            raise Exception("this can never happen :)")
+
         if tag not in compatible_tags:
             continue
 
@@ -96,7 +97,7 @@ def get_compatible_wheels(name: str, version: Version) -> list[WheelInfo]:
             WheelInfo(
                 python=tag.interpreter,
                 abi=tag.abi,
-                platofrm=tag.platform,
+                platform=tag.platform,
             )
         )
     return compatible_wheels
@@ -131,6 +132,8 @@ class PythonPackage:
           pname = "{name}";
           version = "{version}";
 
+          doCheck = false;
+
           src = python.pkgs.fetchPypi {{
             inherit pname version;
             sha256 = "{sha256}";
@@ -143,7 +146,7 @@ class PythonPackage:
         if self.wheel_info is None:
             format_info = "format = \"setuptools\";"
         else:
-            format_info = textwrap.indent(wheel_info.render(), prefix="    ")
+            format_info = textwrap.indent(self.wheel_info.render(), prefix="    ")
 
         return template.format(
             name=self.name,
