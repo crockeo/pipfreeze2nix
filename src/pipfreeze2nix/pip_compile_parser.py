@@ -9,42 +9,95 @@ from packaging.requirements import InvalidRequirement, Requirement
 
 @dataclass(frozen=True)
 class RequirementTree:
-    name: str
-    dependencies: set[str] = field(default_factory=set)
+    req: Requirement
+    is_direct: bool
+    dependencies: set[str]
 
 
-def parse_compiled_requirements(requirements_txt: Path) -> dict[str, RequirementTree]:
-    # TODO: this is some UGLY code. rewrite?
-    requirement_trees = {}
-    last_req = None
-    for line in requirements_txt.read_text().splitlines():
+@dataclass(frozen=True)
+class InverseRequirementTree:
+    req: Requirement
+    is_direct: bool
+    depended_on_by: set[str]
+
+
+def segment_compiled_requirements(lines: list[str]) -> list[list[str]]:
+    segments = []
+    current_segment = []
+    for line in lines:
         contents, _, comment = line.partition("#")
-        contents = contents.strip()
-        comment = comment.strip()
+        contents, comment = (contents.strip(), comment.strip())
         if contents and comment:
-            raise Exception("oops, only supposed to be one")
+            raise Exception("oops, only supposed to be one in normal output?")
 
         if contents:
             try:
-                req = Requirement(contents)
+                Requirement(contents)
             except InvalidRequirement:
-                print(f"warning: invalid requirement {line}", file=sys.stderr)
                 continue
 
-            last_req = req.name
-            if req.name not in requirement_trees:
-                requirement_trees[req.name] = RequirementTree(req.name)
+            if current_segment:
+                segments.append(current_segment)
+                current_segment = []
+            current_segment.append(contents)
 
-        if comment:
-            if not comment.startswith("via "):
-                continue
-            comment = comment[len("via "):]
-            if comment.startswith("-r "):
-                continue
+        if comment and current_segment:
+            current_segment.append(comment)
 
-            if comment not in requirement_trees:
-                requirement_trees[comment] = RequirementTree(comment)
-            if last_req is not None:
-                requirement_trees[comment].dependencies.add(last_req)
+    if current_segment:
+        segments.append(current_segment)
 
+    return segments
+
+
+def parse_segment(segment: list[str]) -> InverseRequirementTree:
+    if not len(segment) >= 2:
+        # TODO: exc
+        raise Exception("invalid asf brother")
+
+    req = Requirement(segment[0])
+    depended_on_by = segment[1:]
+    if depended_on_by[0] == "via":
+        depended_on_by = depended_on_by[1:]
+    for i, name in enumerate(depended_on_by):
+        if name.startswith("via "):
+            depended_on_by[i] = name[len("via "):]
+
+    to_remove = []
+    is_direct = False
+    for i, name in enumerate(depended_on_by):
+        if name.startswith("-r "):
+            is_direct = True
+            to_remove.append(i)
+
+    for i in reversed(to_remove):
+        depended_on_by.pop(i)
+
+    return InverseRequirementTree(
+        req=req,
+        is_direct=is_direct,
+        depended_on_by=set(depended_on_by),
+    )
+
+
+def parse_compiled_requirements(requirements_txt: Path) -> dict[str, RequirementTree]:
+    lines = requirements_txt.read_text().splitlines()
+    segments = segment_compiled_requirements(lines)
+    inverse_trees = [
+        parse_segment(segment)
+        for segment in segments
+    ]
+
+    requirement_trees = {}
+    for inverse_tree in sorted(
+        inverse_trees,
+        key=lambda inverse_tree: len(inverse_tree.depended_on_by),
+    ):
+        requirement_trees[inverse_tree.req.name] = RequirementTree(
+            req=inverse_tree.req,
+            is_direct=inverse_tree.is_direct,
+            dependencies=set(),
+        )
+        for dependent in inverse_tree.depended_on_by:
+            requirement_trees[dependent].dependencies.add(inverse_tree.req.name)
     return requirement_trees
