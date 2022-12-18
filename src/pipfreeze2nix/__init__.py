@@ -13,6 +13,8 @@ from packaging.utils import parse_wheel_filename
 from packaging.version import Version
 
 from pipfreeze2nix import pep503
+from pipfreeze2nix.pip_compile_parser import parse_compiled_requirements
+from pipfreeze2nix.pip_compile_parser import RequirementTree
 
 
 # (done) step 0) get it working with sdists
@@ -125,24 +127,32 @@ def choose_artifact(req: Requirement) -> pep503.Artifact:
     )
 
 
-def generate_build_python_package(req: Requirement) -> str:
+def generate_build_python_package(requirement_tree: RequirementTree) -> str:
+    req = requirement_tree.req
+
     # TODO: support other formats like pyproject
     artifact = choose_artifact(req)
     artifact_format = "wheel" if artifact.is_wheel else "setuptools"
 
+    dependencies = textwrap.indent("\n".join(requirement_tree.dependencies), prefix="    ")
+
     template = f"""\
-    (python.pkgs.buildPythonPackage rec {{
+    {req.name} = (python.pkgs.buildPythonPackage rec {{
       pname = "{req.name}";
       version = "{parse_pinned_version(req)}";
       format = "{artifact_format}";
 
       doCheck = false;
 
+      propagatedBuildInputs = [
+    {dependencies}
+      ];
+
       src = builtins.fetchurl {{
         url = "{artifact.url}";
         sha256 = "{get_artifact_sha256(artifact)}";
       }};
-    }})
+    }});
     """
     template = textwrap.dedent(template)
     return template
@@ -150,6 +160,9 @@ def generate_build_python_package(req: Requirement) -> str:
 
 FILE_TPL = """\
 {{ python, nixpkgs }}:
+let
+{let_list}\
+in
 [
 {package_list}\
 ]
@@ -171,27 +184,27 @@ def main(args: list[str]) -> None:
     out_file_name = f"{in_file_name}.nix"
     out_file = in_file.parent / out_file_name
 
-    requirements = []
-    for line in in_file.read_text().splitlines():
-        line = line.strip()
-        line, _, _, = line.partition("#")
-        if not line:
-            continue
+    requirement_trees = sorted(
+        list(parse_compiled_requirements(in_file).values()),
+        key=lambda requirement_tree: len(requirement_tree.dependencies),
+    )
 
-        try:
-            req = Requirement(line)
-        except InvalidRequirement:
-            print(f"warning: invalid requirement {line}", file=sys.stderr)
-            continue
-
-        requirements.append(req)
-
-    packages = [
-        textwrap.indent(generate_build_python_package(req), prefix="  ")
-        for req in requirements
+    let_list = [
+        textwrap.indent(generate_build_python_package(requirement_tree), prefix="  ")
+        for requirement_tree in requirement_trees
+    ]
+    package_list = [
+        requirement_tree.req.name
+        for requirement_tree in requirement_trees
+        if requirement_tree.is_direct
     ]
 
-    out_file.write_text(FILE_TPL.format(package_list="".join(packages)))
+    out_file.write_text(
+        FILE_TPL.format(
+            let_list="".join(let_list),
+            package_list="\n".join(package_list),
+        ),
+    )
 
 
 def realmain() -> None:
