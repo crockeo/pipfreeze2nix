@@ -151,7 +151,7 @@ def generate_build_python_package(req: Requirement) -> str:
 FILE_TPL = """\
 {{ python, nixpkgs }}:
 [
-  {package_list}\
+{package_list}\
 ]
 """
 

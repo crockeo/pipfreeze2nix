@@ -1,6 +1,6 @@
 { python, nixpkgs }:
 [
-    (python.pkgs.buildPythonPackage rec {
+  (python.pkgs.buildPythonPackage rec {
     pname = "certifi";
     version = "2022.12.7";
     format = "wheel";
