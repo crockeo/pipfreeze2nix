@@ -11,6 +11,10 @@ class Artifact:
     name: str
     sha256: Optional[str]
 
+    @property
+    def is_wheel(self) -> bool:
+        return self.name.endswith(".whl")
+
 
 class SimpleParser(HTMLParser):
     def __init__(self):
@@ -49,7 +53,7 @@ class SimpleParser(HTMLParser):
         )
 
 
-def get_artifacts(package: str) -> list[str]:
+def get_artifacts(package: str) -> list[Artifact]:
     res = requests.get(f"https://pypi.org/simple/{package}")
     res.raise_for_status()
 

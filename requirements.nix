@@ -3,61 +3,73 @@
     (python.pkgs.buildPythonPackage rec {
     pname = "certifi";
     version = "2022.12.7";
+    format = "wheel";
 
-    src = python.pkgs.fetchPypi {
-      inherit pname version;
-      sha256 = "35824b4c3a97115964b408844d64aa14db1cc518f6562e8d7261699d1350a9e3";
-      format = "setuptools";
+    doCheck = false;
+
+    src = builtins.fetchurl {
+      url = "https://files.pythonhosted.org/packages/71/4c/3db2b8021bd6f2f0ceb0e088d6b2d49147671f25832fb17970e9b583d742/certifi-2022.12.7-py3-none-any.whl";
+      sha256 = "4ad3232f5e926d6718ec31cfc1fcadfde020920e278684144551c91769c7bc18";
     };
   })
   (python.pkgs.buildPythonPackage rec {
     pname = "charset-normalizer";
     version = "2.1.1";
+    format = "wheel";
 
-    src = python.pkgs.fetchPypi {
-      inherit pname version;
-      sha256 = "5a3d016c7c547f69d6f81fb0db9449ce888b418b5b9952cc5e6e66843e9dd845";
-      format = "setuptools";
+    doCheck = false;
+
+    src = builtins.fetchurl {
+      url = "https://files.pythonhosted.org/packages/db/51/a507c856293ab05cdc1db77ff4bc1268ddd39f29e7dc4919aa497f0adbec/charset_normalizer-2.1.1-py3-none-any.whl";
+      sha256 = "83e9a75d1911279afd89352c68b45348559d1fc0506b054b346651b5e7fee29f";
     };
   })
   (python.pkgs.buildPythonPackage rec {
     pname = "idna";
     version = "3.4";
+    format = "wheel";
 
-    src = python.pkgs.fetchPypi {
-      inherit pname version;
-      sha256 = "814f528e8dead7d329833b91c5faa87d60bf71824cd12a7530b5526063d02cb4";
-      format = "setuptools";
+    doCheck = false;
+
+    src = builtins.fetchurl {
+      url = "https://files.pythonhosted.org/packages/fc/34/3030de6f1370931b9dbb4dad48f6ab1015ab1d32447850b9fc94e60097be/idna-3.4-py3-none-any.whl";
+      sha256 = "90b77e79eaa3eba6de819a0c442c0b4ceefc341a7a2ab77d7562bf49f425c5c2";
     };
   })
   (python.pkgs.buildPythonPackage rec {
     pname = "packaging";
     version = "22.0";
+    format = "wheel";
 
-    src = python.pkgs.fetchPypi {
-      inherit pname version;
-      sha256 = "2198ec20bd4c017b8f9717e00f0c8714076fc2fd93816750ab48e2c41de2cfd3";
-      format = "setuptools";
+    doCheck = false;
+
+    src = builtins.fetchurl {
+      url = "https://files.pythonhosted.org/packages/8f/7b/42582927d281d7cb035609cd3a543ffac89b74f3f4ee8e1c50914bcb57eb/packaging-22.0-py3-none-any.whl";
+      sha256 = "957e2148ba0e1a3b282772e791ef1d8083648bc131c8ab0c1feba110ce1146c3";
     };
   })
   (python.pkgs.buildPythonPackage rec {
     pname = "requests";
     version = "2.28.1";
+    format = "wheel";
 
-    src = python.pkgs.fetchPypi {
-      inherit pname version;
-      sha256 = "7c5599b102feddaa661c826c56ab4fee28bfd17f5abca1ebbe3e7f19d7c97983";
-      format = "setuptools";
+    doCheck = false;
+
+    src = builtins.fetchurl {
+      url = "https://files.pythonhosted.org/packages/ca/91/6d9b8ccacd0412c08820f72cebaa4f0c0441b5cda699c90f618b6f8a1b42/requests-2.28.1-py3-none-any.whl";
+      sha256 = "8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349";
     };
   })
   (python.pkgs.buildPythonPackage rec {
     pname = "urllib3";
     version = "1.26.13";
+    format = "wheel";
 
-    src = python.pkgs.fetchPypi {
-      inherit pname version;
-      sha256 = "c083dd0dce68dbfbe1129d5271cb90f9447dea7d52097c6e0126120c521ddea8";
-      format = "setuptools";
+    doCheck = false;
+
+    src = builtins.fetchurl {
+      url = "https://files.pythonhosted.org/packages/65/0c/cc6644eaa594585e5875f46f3c83ee8762b647b51fc5b0fb253a242df2dc/urllib3-1.26.13-py2.py3-none-any.whl";
+      sha256 = "47cc05d99aaa09c9e72ed5809b60e7ba354e64b59c9c173ac3018642d8bb41fc";
     };
   })
 ]

@@ -3,16 +3,16 @@ from __future__ import annotations
 import subprocess
 import sys
 import textwrap
-from dataclasses import dataclass
 from pathlib import Path
 
 import requests
 from packaging.requirements import Requirement
 from packaging.requirements import InvalidRequirement
 from packaging.tags import sys_tags
-from packaging.utils import canonicalize_name
 from packaging.utils import parse_wheel_filename
 from packaging.version import Version
+
+from pipfreeze2nix import pep503
 
 
 # (done) step 0) get it working with sdists
@@ -39,123 +39,6 @@ from packaging.version import Version
 # x86_64 -> x86_64
 
 
-@dataclass
-class WheelInfo:
-    # TODO: do we need `dist` here?
-    python: str
-    abi: str
-    platform: str
-
-    def render(self) -> str:
-        template = """\
-        format = "wheel";
-        python = "{python}";
-        abi = "{abi}";
-        platform = "{platform}";
-        """
-        template = textwrap.dedent(template)
-        return template.format(
-            python=self.python,
-            abi=self.abi,
-            platform=self.platform,
-        )
-
-
-def get_wheels(name: str) -> list[str]:
-    # TODO: implement simple server parsing here to fetch available wheels
-    # TODO:
-    #   how do we do caching here? how do we know that there aren't more wheels available?
-    #   or are we ok with always fetching the simple/ page for a library
-    raise NotImplementedError
-
-
-def get_compatible_wheels(name: str, version: Version) -> list[WheelInfo]:
-    available_wheels = get_wheels(name)
-
-    compatible_tags = set(sys_tags())
-    compatible_wheels = []
-    for wheel in available_wheels:
-        name, version, _, tags = parse_wheel_filename(wheel)
-        if version != version:
-            continue
-
-        if len(tags) != 1:
-            # nix can only handle wheels that have one tag in their tag set.
-            # This constraint comes from how nix constructs wheel URLs.
-            # One would need to upstream a fix to nixpkgs to fix this.
-            continue
-
-        for tag in tags:
-            break
-        else:
-            raise Exception("this can never happen :)")
-
-        if tag not in compatible_tags:
-            continue
-
-        compatible_wheels.append(
-            WheelInfo(
-                python=tag.interpreter,
-                abi=tag.abi,
-                platform=tag.platform,
-            )
-        )
-    return compatible_wheels
-
-
-@dataclass
-class PythonPackage:
-    name: str
-    version: Version
-    sha256: str
-    wheel_info: WheelInfo | None = None
-
-    def compute_url(self) -> str:
-        # Logic taken from the nixpkgs fetchPypi implementation.
-        # This is to ensure we always use the same artifact as nix.
-        first_letter = self.name[0]
-        name = self.name
-        version = self.version
-        if self.wheel_info is None:
-            return f"https://files.pythonhosted.org/source/{first_letter}/{name}/{name}-{version}.tar.gz"
-
-        python = self.wheel_info.python
-        abi = self.wheel_info.abi
-        platform = self.wheel_info.platform
-        return (
-            f"https://files.pythonhosted.org/packages/py2.py3/{first_letter}/{name}/{name}-{version}-{python}-{abi}-{platform}.whl"
-        )
-
-    def render(self) -> str:
-        template = """\
-        (python.pkgs.buildPythonPackage rec {{
-          pname = "{name}";
-          version = "{version}";
-
-          doCheck = false;
-
-          src = python.pkgs.fetchPypi {{
-            inherit pname version;
-            sha256 = "{sha256}";
-            {format_info}
-          }};
-        }})
-        """
-        template = textwrap.dedent(template)
-
-        if self.wheel_info is None:
-            format_info = "format = \"setuptools\";"
-        else:
-            format_info = textwrap.indent(self.wheel_info.render(), prefix="    ")
-
-        return template.format(
-            name=self.name,
-            version=self.version,
-            sha256=self.sha256,
-            format_info=format_info,
-        )
-
-
 def parse_pinned_version(req: Requirement) -> Version:
     for specifier in req.specifier:
         if specifier.operator != "==":
@@ -166,54 +49,103 @@ def parse_pinned_version(req: Requirement) -> Version:
     raise Exception("no specifiers")
 
 
-def get_requirement_mirror_suffix(req: Requirement) -> str:
-    first_letter = req.name[0].lower()
-    name = canonicalize_name(req.name)
-    version = parse_pinned_version(req)
-    return f"{first_letter}/{name}/{name}-{version}.tar.gz"
+def fetch_artifact(url: str, cache_path: Path) -> None:
+    with requests.get(url, stream=True) as stream:
+        stream.raise_for_status()
+        with open(cache_path, "wb") as f:
+            for chunk in stream.iter_content(chunk_size=8192):
+                f.write(chunk)
 
 
-def get_requirement_mirror_url(req: Requirement) -> str:
-    return f"https://files.pythonhosted.org/packages/source/{get_requirement_mirror_suffix(req)}"
+def get_artifact_sha256(artifact: pep503.Artifact) -> str:
+    if artifact.sha256 is not None:
+        return artifact.sha256
 
+    cache_path = Path.home() / ".cache" / "pipfreeze2nix" / artifact.name.lower()
+    if not cache_path.exists():
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        fetch_artifact(artifact.url, cache_path)
 
-def get_requirement_cache_path(req: Requirement) -> Path:
-    cache_dir = Path.home() / ".cache" / "pipfreeze2nix"
-    filename = f"{req.name}-{parse_pinned_version(req)}.tar.gz"
-    return cache_dir / filename
-
-
-def fetch_requirement(req: Requirement) -> Path:
-    req_cache_path = get_requirement_cache_path(req)
-    if not req_cache_path.exists():
-        req_cache_path.parent.mkdir(exist_ok=True, parents=True)
-
-        mirror_url = get_requirement_mirror_url(req)
-
-        with requests.get(mirror_url, stream=True) as stream:
-            stream.raise_for_status()
-            with open(req_cache_path, "wb") as f:
-                for chunk in stream.iter_content(chunk_size=8192):
-                    f.write(chunk)
-    return req_cache_path
-
-
-def fetch_python_package(req: Requirement) -> PythonPackage:
-    path = fetch_requirement(req)
-
-    # TODO: don't shell out to sha256sum for this,
-    # do it in-process instead!
     sha256 = subprocess.check_output(
-        ("sha256sum", path),
+        ("sha256sum", cache_path),
         text=True,
     )
     sha256, _, _ = sha256.partition("  ")
+    return sha256
 
-    return PythonPackage(
-        name=req.name,
-        version=parse_pinned_version(req),
-        sha256=sha256,
+
+def choose_wheel(artifacts: list[pep503.Artifact], name: str, pinned_version: Version) -> pep503.Artifact | None:
+    wheels = [
+        artifact
+        for artifact in artifacts
+        if artifact.name.endswith(".whl")
+    ]
+    compatible_tags = set(sys_tags())
+    compatible_wheels = []
+    for wheel in wheels:
+        _, version, _, tags = parse_wheel_filename(wheel.name)
+        if version != pinned_version:
+            continue
+
+        for tag in tags:
+            break
+        else:
+            # TODO: exc type
+            raise Exception("must have at least 1 tag...")
+
+        if tag not in compatible_tags:
+            continue
+
+        compatible_wheels.append(wheel)
+
+    if not compatible_wheels:
+        return None
+
+    return compatible_wheels[0]
+
+
+def choose_sdist(artifacts: list[pep503.Artifact], name: str, pinned_version: Version) -> pep503.Artifact | None:
+    # TODO: implement
+    pass
+
+
+def choose_artifact(req: Requirement) -> pep503.Artifact:
+    pinned_version = parse_pinned_version(req)
+    artifacts = pep503.get_artifacts(req.name)
+
+    if (wheel_package := choose_wheel(artifacts, req.name, pinned_version)) is not None:
+        return wheel_package
+
+    if (sdist_package := choose_sdist(artifacts, req.name, pinned_version)) is not None:
+        return sdist_package
+
+    # TODO: type
+    raise Exception(
+        f"cannot find package for {req}"
     )
+
+
+def generate_build_python_package(req: Requirement) -> str:
+    # TODO: support other formats like pyproject
+    artifact = choose_artifact(req)
+    artifact_format = "wheel" if artifact.is_wheel else "setuptools"
+
+    template = f"""\
+    (python.pkgs.buildPythonPackage rec {{
+      pname = "{req.name}";
+      version = "{parse_pinned_version(req)}";
+      format = "{artifact_format}";
+
+      doCheck = false;
+
+      src = builtins.fetchurl {{
+        url = "{artifact.url}";
+        sha256 = "{get_artifact_sha256(artifact)}";
+      }};
+    }})
+    """
+    template = textwrap.dedent(template)
+    return template
 
 
 FILE_TPL = """\
@@ -254,13 +186,9 @@ def main(args: list[str]) -> None:
 
         requirements.append(req)
 
-    python_packages = [
-        fetch_python_package(req)
-        for req in requirements
-    ]
     packages = [
-        textwrap.indent(python_package.render(), "  ")
-        for python_package in python_packages
+        textwrap.indent(generate_build_python_package(req), prefix="  ")
+        for req in requirements
     ]
 
     out_file.write_text(FILE_TPL.format(package_list="".join(packages)))
