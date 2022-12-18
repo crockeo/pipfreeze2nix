@@ -17,10 +17,19 @@
 
           src = ./src;
 
-          propagatedBuildInputs = pkgs.callPackage ./requirements.nix {
-            inherit python;
-            nixpkgs = pkgs;
-          };
+          # TODO: enable when i've got it working
+          # propagatedBuildInputs = pkgs.callPackage ./requirements.nix {
+          #   inherit python;
+          #   nixpkgs = pkgs;
+          # };
+          propagatedBuildInputs = [
+            python.pkgs.certifi
+            python.pkgs.charset-normalizer
+            python.pkgs.idna
+            python.pkgs.packaging
+            python.pkgs.requests
+            python.pkgs.urllib3
+          ];
         };
       }
     );
