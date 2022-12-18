@@ -65,6 +65,9 @@ class WheelInfo:
 
 def get_wheels(name: str) -> list[str]:
     # TODO: implement simple server parsing here to fetch available wheels
+    # TODO:
+    #   how do we do caching here? how do we know that there aren't more wheels available?
+    #   or are we ok with always fetching the simple/ page for a library
     raise NotImplementedError
 
 
