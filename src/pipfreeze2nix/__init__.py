@@ -18,7 +18,7 @@ from pipfreeze2nix.pip_compile_parser import RequirementTree
 
 
 # (done) step 0) get it working with sdists
-# step 1) get it working with wheels on current platform
+# (done) step 1) get it working with wheels on current platform
 # step 2) get it working with wheels across multiple platforms
 
 
