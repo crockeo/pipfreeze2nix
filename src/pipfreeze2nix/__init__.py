@@ -139,10 +139,10 @@ def generate_build_python_package(requirement_tree: RequirementTree) -> str:
         prefix="    ",
     )
 
-    template = f"""\
-    {req.name} = (python.pkgs.buildPythonPackage rec {{
-      pname = "{req.name}";
-      version = "{parse_pinned_version(req)}";
+    template = """\
+    {name} = (python.pkgs.buildPythonPackage rec {{
+      pname = "{name}";
+      version = "{version}";
       format = "{artifact_format}";
 
       doCheck = false;
@@ -152,13 +152,20 @@ def generate_build_python_package(requirement_tree: RequirementTree) -> str:
       ];
 
       src = builtins.fetchurl {{
-        url = "{artifact.url}";
-        sha256 = "{get_artifact_sha256(artifact)}";
+        url = "{url}";
+        sha256 = "{sha256}";
       }};
     }});
     """
     template = textwrap.dedent(template)
-    return template
+    return template.format(
+        name=req.name,
+        version=parse_pinned_version(req),
+        artifact_format=artifact_format,
+        dependencies=dependencies,
+        url=artifact.url,
+        sha256=get_artifact_sha256(artifact),
+    )
 
 
 FILE_TPL = """\

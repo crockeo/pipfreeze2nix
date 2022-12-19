@@ -169,9 +169,9 @@ let
 
     propagatedBuildInputs = [
       certifi
-  charset-normalizer
-  idna
-  urllib3
+      charset-normalizer
+      idna
+      urllib3
     ];
 
     src = builtins.fetchurl {
@@ -188,11 +188,11 @@ let
 
     propagatedBuildInputs = [
       attrs
-  exceptiongroup
-  iniconfig
-  packaging
-  pluggy
-  tomli
+      exceptiongroup
+      iniconfig
+      packaging
+      pluggy
+      tomli
     ];
 
     src = builtins.fetchurl {
