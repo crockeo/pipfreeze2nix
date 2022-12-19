@@ -178,8 +178,14 @@ in
 def main(args: list[str]) -> None:
     args = args[1:]
     if len(args) != 1:
-        # TODO: error
-        raise SystemExit("something")
+        raise SystemExit(
+            textwrap.dedent(
+                """\
+                Proper usage:
+                  pipfreeze2nix <path/to/requirements.txt>
+                """,
+            )
+        )
 
     in_file = Path(args[0])
     if not in_file.is_absolute():
