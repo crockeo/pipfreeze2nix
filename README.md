@@ -19,8 +19,9 @@ pipfreeze2nix <path/to/requirements.txt>
 Then pipfreeze2nix will generate a `requirements.nix` file in that same directory.
 You can use `requirements.nix` as a `propagatedBulidInputs` inside of
 a `buildPythonApplication` or `buildPythonPackage` call.
-For example, this project's [requirements.nix](./requirements.nix)
-at time of writing:
+For example, this project's [flake.nix](./flake.nix)
+pulls in the [requirements.nix](./requirements.nix)
+like so:
 
 ```nix
 {
