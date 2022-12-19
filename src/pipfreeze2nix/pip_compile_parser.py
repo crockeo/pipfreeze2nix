@@ -5,6 +5,7 @@ from pathlib import Path
 
 from packaging.requirements import InvalidRequirement
 from packaging.requirements import Requirement
+from pipfreeze2nix.exceptions import PipCompileInvariantError
 
 
 @dataclass(frozen=True)
@@ -24,11 +25,13 @@ class InverseRequirementTree:
 def segment_compiled_requirements(lines: list[str]) -> list[list[str]]:
     segments = []
     current_segment = []
-    for line in lines:
+    for i, line in enumerate(lines):
         contents, _, comment = line.partition("#")
         contents, comment = (contents.strip(), comment.strip())
         if contents and comment:
-            raise Exception("oops, only supposed to be one in normal output?")
+            raise PipCompileInvariantError(
+                f"Comment and non-comment contents on the same line ({i}): {line}",
+            )
 
         if contents:
             try:
@@ -52,8 +55,11 @@ def segment_compiled_requirements(lines: list[str]) -> list[list[str]]:
 
 def parse_segment(segment: list[str]) -> InverseRequirementTree:
     if not len(segment) >= 2:
-        # TODO: exc
-        raise Exception("invalid asf brother")
+        raise PipCompileInvariantError(
+            "Each segment (requirement and `via` comments) "
+            "must be at least 2 elements long, "
+            f"not {len(segment)}: {segment}",
+        )
 
     req = Requirement(segment[0])
     depended_on_by = segment[1:]

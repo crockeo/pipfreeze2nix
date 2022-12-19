@@ -3,6 +3,7 @@ from html.parser import HTMLParser
 from typing import Optional
 
 import requests
+from pipfreeze2nix.exceptions import Pep503Error
 
 
 @dataclass(frozen=True)
@@ -38,8 +39,7 @@ class SimpleParser(HTMLParser):
 
         url = last_attrs["href"]
         if url is None:
-            # TODO
-            raise Exception()
+            raise Pep503Error("Every anchor must have an associated `href` attribute.")
 
         url, _, sha256 = url.partition("#")
         if sha256:

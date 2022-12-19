@@ -11,6 +11,7 @@ from packaging.tags import sys_tags
 from packaging.utils import parse_wheel_filename
 from packaging.version import Version
 from pipfreeze2nix import pep503
+from pipfreeze2nix.exceptions import MissingArtifactError
 from pipfreeze2nix.pip_compile_parser import parse_compiled_requirements
 from pipfreeze2nix.pip_compile_parser import RequirementTree
 
@@ -40,13 +41,19 @@ from pipfreeze2nix.pip_compile_parser import RequirementTree
 
 
 def parse_pinned_version(req: Requirement) -> Version:
+    if len(req.specifier) != 1:
+        raise ValueError(f"Requirement `{req}` has more than one specifier.")
+
     for specifier in req.specifier:
         if specifier.operator != "==":
-            # TODO: type
-            raise Exception("invalid specifier, not pinned")
+            raise ValueError(f"Requirement `{req}` has a non-pinned specifier.")
         return Version(specifier.version)
-    # TODO: type
-    raise Exception("no specifiers")
+
+    raise SystemExit(
+        "Unexpected control flow in `parse_pinned_version` "
+        f"when parsing requirement `{req}`. "
+        "This should not be able to happen."
+    )
 
 
 def fetch_artifact(url: str, cache_path: Path) -> None:
@@ -113,8 +120,7 @@ def choose_artifact(req: Requirement) -> pep503.Artifact:
     if (sdist_package := choose_sdist(artifacts, req.name, pinned_version)) is not None:
         return sdist_package
 
-    # TODO: type
-    raise Exception(f"cannot find package for {req}")
+    raise MissingArtifactError(f"Cannot find artifact for package {req}.")
 
 
 def generate_build_python_package(requirement_tree: RequirementTree) -> str:
