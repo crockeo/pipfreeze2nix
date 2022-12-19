@@ -90,15 +90,9 @@ def choose_wheel(artifacts: list[pep503.Artifact], name: str, pinned_version: Ve
             continue
 
         for tag in tags:
-            break
-        else:
-            # TODO: exc type
-            raise Exception("must have at least 1 tag...")
-
-        if tag not in compatible_tags:
-            continue
-
-        compatible_wheels.append(wheel)
+            if tag in compatible_tags:
+                compatible_wheels.append(wheel)
+                break
 
     if not compatible_wheels:
         return None
