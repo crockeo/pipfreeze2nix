@@ -7,11 +7,9 @@ from pathlib import Path
 
 import requests
 from packaging.requirements import Requirement
-from packaging.requirements import InvalidRequirement
 from packaging.tags import sys_tags
 from packaging.utils import parse_wheel_filename
 from packaging.version import Version
-
 from pipfreeze2nix import pep503
 from pipfreeze2nix.pip_compile_parser import parse_compiled_requirements
 from pipfreeze2nix.pip_compile_parser import RequirementTree
@@ -76,12 +74,10 @@ def get_artifact_sha256(artifact: pep503.Artifact) -> str:
     return sha256
 
 
-def choose_wheel(artifacts: list[pep503.Artifact], name: str, pinned_version: Version) -> pep503.Artifact | None:
-    wheels = [
-        artifact
-        for artifact in artifacts
-        if artifact.name.endswith(".whl")
-    ]
+def choose_wheel(
+    artifacts: list[pep503.Artifact], name: str, pinned_version: Version
+) -> pep503.Artifact | None:
+    wheels = [artifact for artifact in artifacts if artifact.name.endswith(".whl")]
     compatible_tags = set(sys_tags())
     compatible_wheels = []
     for wheel in wheels:
@@ -100,7 +96,9 @@ def choose_wheel(artifacts: list[pep503.Artifact], name: str, pinned_version: Ve
     return compatible_wheels[0]
 
 
-def choose_sdist(artifacts: list[pep503.Artifact], name: str, pinned_version: Version) -> pep503.Artifact | None:
+def choose_sdist(
+    artifacts: list[pep503.Artifact], name: str, pinned_version: Version
+) -> pep503.Artifact | None:
     # TODO: implement
     pass
 
@@ -116,9 +114,7 @@ def choose_artifact(req: Requirement) -> pep503.Artifact:
         return sdist_package
 
     # TODO: type
-    raise Exception(
-        f"cannot find package for {req}"
-    )
+    raise Exception(f"cannot find package for {req}")
 
 
 def generate_build_python_package(requirement_tree: RequirementTree) -> str:

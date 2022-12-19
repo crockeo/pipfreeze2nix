@@ -20,7 +20,10 @@ class SimpleParser(HTMLParser):
     def __init__(self):
         super().__init__()
         self.artifacts = []
-        self.last_tag = ((""),(""),)
+        self.last_tag = (
+            (""),
+            (""),
+        )
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self.last_tag = (tag, dict(attrs))

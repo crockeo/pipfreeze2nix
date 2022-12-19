@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
-from packaging.requirements import InvalidRequirement, Requirement
+from packaging.requirements import InvalidRequirement
+from packaging.requirements import Requirement
 
 
 @dataclass(frozen=True)
@@ -61,7 +61,7 @@ def parse_segment(segment: list[str]) -> InverseRequirementTree:
         depended_on_by = depended_on_by[1:]
     for i, name in enumerate(depended_on_by):
         if name.startswith("via "):
-            depended_on_by[i] = name[len("via "):]
+            depended_on_by[i] = name[len("via ") :]
 
     to_remove = []
     is_direct = False
@@ -83,10 +83,7 @@ def parse_segment(segment: list[str]) -> InverseRequirementTree:
 def parse_compiled_requirements(requirements_txt: Path) -> dict[str, RequirementTree]:
     lines = requirements_txt.read_text().splitlines()
     segments = segment_compiled_requirements(lines)
-    inverse_trees = [
-        parse_segment(segment)
-        for segment in segments
-    ]
+    inverse_trees = [parse_segment(segment) for segment in segments]
 
     requirement_trees = {}
     for inverse_tree in sorted(
