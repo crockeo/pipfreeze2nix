@@ -134,7 +134,10 @@ def generate_build_python_package(requirement_tree: RequirementTree) -> str:
     artifact = choose_artifact(req)
     artifact_format = "wheel" if artifact.is_wheel else "setuptools"
 
-    dependencies = textwrap.indent("\n".join(requirement_tree.dependencies), prefix="    ")
+    dependencies = textwrap.indent(
+        "\n".join(sorted(requirement_tree.dependencies)),
+        prefix="    ",
+    )
 
     template = f"""\
     {req.name} = (python.pkgs.buildPythonPackage rec {{
