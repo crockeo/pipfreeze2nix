@@ -174,7 +174,7 @@ let
 {let_list}\
 in
 [
-{package_list}\
+{package_list}
 ]
 """
 
@@ -212,7 +212,7 @@ def main(args: list[str]) -> None:
     out_file.write_text(
         FILE_TPL.format(
             let_list="".join(let_list),
-            package_list="\n".join(package_list),
+            package_list=textwrap.indent("\n".join(sorted(package_list)), prefix="  "),
         ),
     )
 

@@ -202,6 +202,7 @@ let
   });
 in
 [
-packaging
-requests
-pytest]
+  packaging
+  pytest
+  requests
+]
