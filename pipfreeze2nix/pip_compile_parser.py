@@ -5,6 +5,7 @@ from pathlib import Path
 
 from packaging.requirements import InvalidRequirement
 from packaging.requirements import Requirement
+
 from pipfreeze2nix.exceptions import PipCompileInvariantError
 
 

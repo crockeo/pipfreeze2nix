@@ -15,7 +15,7 @@
           pname = "pipfreeze2nix";
           version = "0.1.0";
 
-          src = ./src;
+          src = ./.;
 
           propagatedBuildInputs = pkgs.callPackage ./requirements.nix {
             inherit python;

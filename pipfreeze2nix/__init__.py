@@ -10,6 +10,7 @@ from packaging.requirements import Requirement
 from packaging.tags import sys_tags
 from packaging.utils import parse_wheel_filename
 from packaging.version import Version
+
 from pipfreeze2nix import pep503
 from pipfreeze2nix.exceptions import MissingArtifactError
 from pipfreeze2nix.pip_compile_parser import parse_compiled_requirements

@@ -3,6 +3,7 @@ from html.parser import HTMLParser
 from typing import Optional
 
 import requests
+
 from pipfreeze2nix.exceptions import Pep503Error
 
 

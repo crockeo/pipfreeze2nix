@@ -4,6 +4,7 @@ from tempfile import TemporaryDirectory
 
 import pytest
 from packaging.requirements import Requirement
+
 from pipfreeze2nix import pip_compile_parser
 
 
