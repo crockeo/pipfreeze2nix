@@ -208,7 +208,8 @@ def main(args: list[str]) -> None:
                 generate_build_python_package(requirement_tree), prefix="  "
             )
         )
-        package_list.append(requirement_tree.req.name)
+        if requirement_tree.is_direct:
+            package_list.append(requirement_tree.req.name)
 
     out_file.write_text(
         FILE_TPL.format(

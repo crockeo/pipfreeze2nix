@@ -144,6 +144,27 @@ let
       sha256 = "939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc";
     };
   });
+  pytest = (python.pkgs.buildPythonPackage rec {
+    pname = "pytest";
+    version = "7.2.0";
+    format = "wheel";
+
+    doCheck = false;
+
+    propagatedBuildInputs = [
+      attrs
+      exceptiongroup
+      iniconfig
+      packaging
+      pluggy
+      tomli
+    ];
+
+    src = builtins.fetchurl {
+      url = "https://files.pythonhosted.org/packages/67/68/a5eb36c3a8540594b6035e6cdae40c1ef1b6a2bfacbecc3d1a544583c078/pytest-7.2.0-py3-none-any.whl";
+      sha256 = "892f933d339f068883b6fd5a459f03d85bfcb355e4981e146d2c7616c21fef71";
+    };
+  });
   urllib3 = (python.pkgs.buildPythonPackage rec {
     pname = "urllib3";
     version = "1.26.13";
@@ -177,27 +198,6 @@ let
     src = builtins.fetchurl {
       url = "https://files.pythonhosted.org/packages/ca/91/6d9b8ccacd0412c08820f72cebaa4f0c0441b5cda699c90f618b6f8a1b42/requests-2.28.1-py3-none-any.whl";
       sha256 = "8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349";
-    };
-  });
-  pytest = (python.pkgs.buildPythonPackage rec {
-    pname = "pytest";
-    version = "7.2.0";
-    format = "wheel";
-
-    doCheck = false;
-
-    propagatedBuildInputs = [
-      attrs
-      exceptiongroup
-      iniconfig
-      packaging
-      pluggy
-      tomli
-    ];
-
-    src = builtins.fetchurl {
-      url = "https://files.pythonhosted.org/packages/67/68/a5eb36c3a8540594b6035e6cdae40c1ef1b6a2bfacbecc3d1a544583c078/pytest-7.2.0-py3-none-any.whl";
-      sha256 = "892f933d339f068883b6fd5a459f03d85bfcb355e4981e146d2c7616c21fef71";
     };
   });
 in
