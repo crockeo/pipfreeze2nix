@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from typing import Optional
@@ -59,8 +60,17 @@ class SimpleParser(HTMLParser):
         )
 
 
+def get_index_url() -> str:
+    if pip_index := os.environ.get("PIP_INDEX_URL"):
+        if not pip_index.endswith("/"):
+            pip_index = f"{pip_index}/"
+        return pip_index
+    return "https://pypi.org/simple/"
+
+
 def get_artifacts(package: str) -> list[Artifact]:
-    res = requests.get(f"https://pypi.org/simple/{package}")
+    index_url = get_index_url()
+    res = requests.get(f"{index_url}{package}/")
     res.raise_for_status()
 
     parser = SimpleParser()
