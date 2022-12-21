@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generator
 from typing import Iterable
 
 from packaging.requirements import InvalidRequirement
@@ -110,8 +109,42 @@ def parse_compiled_requirements(requirements_txt: Path) -> list[RequirementTree]
     ]
 
 
-def iter_topological(
+class _RequirementTreeGraph:
+    def __init__(self, requirement_trees: Iterable[RequirementTree]):
+        self.table = {}
+        self.graph = defaultdict(set)
+        self.inverse_graph = defaultdict(set)
+        for requirement_tree in requirement_trees:
+            self.table[requirement_tree.req.name] = requirement_tree
+            self.graph[requirement_tree.req.name] = set(requirement_tree.dependencies)
+            for dependency in requirement_tree.dependencies:
+                self.inverse_graph[dependency].add(requirement_tree.req.name)
+
+    def get_requirement_tree(self, name: str) -> RequirementTree:
+        return self.table[name]
+
+    def next_node(self) -> str | None:
+        for k, v in self.inverse_graph.items():
+            if not v:
+                return k
+        return None
+
+    def dependencies(self, name: str) -> set[str]:
+        return self.graph[name]
+
+    def remove(self, from_node: str, to_node: str) -> None:
+        self.graph[from_node].remove(to_node)
+        self.inverse_graph[to_node].remove(from_node)
+
+
+def sorted_reverse_topological(
     requirement_trees: Iterable[RequirementTree],
-) -> Generator[RequirementTree, None, None]:
-    for requirement_tree in requirement_trees:
-        yield requirement_tree
+) -> list[RequirementTree]:
+    sorted_requirement_trees = []
+    graph = _RequirementTreeGraph(requirement_trees)
+    while (node := graph.next_node()) is not None:
+        sorted_requirement_trees.append(graph.get_requirement_tree(node))
+        for dependency in graph.dependencies(node):
+            graph.remove(node, dependency)
+    sorted_requirement_trees.reverse()
+    return sorted_requirement_trees

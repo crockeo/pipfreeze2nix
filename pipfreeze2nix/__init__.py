@@ -13,9 +13,9 @@ from packaging.version import Version
 
 from pipfreeze2nix import pep503
 from pipfreeze2nix.exceptions import MissingArtifactError
-from pipfreeze2nix.pip_compile_parser import iter_topological
 from pipfreeze2nix.pip_compile_parser import parse_compiled_requirements
 from pipfreeze2nix.pip_compile_parser import RequirementTree
+from pipfreeze2nix.pip_compile_parser import sorted_reverse_topological
 
 
 # (done) step 0) get it working with sdists
@@ -200,7 +200,9 @@ def main(args: list[str]) -> None:
 
     let_list = []
     package_list = []
-    for requirement_tree in iter_topological(parse_compiled_requirements(in_file)):
+    for requirement_tree in sorted_reverse_topological(
+        parse_compiled_requirements(in_file)
+    ):
         let_list.append(
             textwrap.indent(
                 generate_build_python_package(requirement_tree), prefix="  "
