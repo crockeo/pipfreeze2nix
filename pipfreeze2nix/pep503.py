@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from typing import Optional

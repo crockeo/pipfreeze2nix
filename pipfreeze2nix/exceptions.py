@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class PipFreeze2NixError(Exception):
     pass
 
