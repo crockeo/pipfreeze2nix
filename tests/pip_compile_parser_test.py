@@ -247,11 +247,6 @@ def test_sorted_reverse_topological(tmp_path):
             dependencies=frozenset("b"),
         ),
         pip_compile_parser.RequirementTree(
-            Requirement("d==11.12.13"),
-            is_direct=True,
-            dependencies=frozenset(),
-        ),
-        pip_compile_parser.RequirementTree(
             Requirement("e==14.15.16"),
             is_direct=False,
             dependencies=frozenset(),
@@ -260,5 +255,10 @@ def test_sorted_reverse_topological(tmp_path):
             Requirement("c==8.9.10"),
             is_direct=True,
             dependencies=frozenset({"a", "e"}),
+        ),
+        pip_compile_parser.RequirementTree(
+            Requirement("d==11.12.13"),
+            is_direct=True,
+            dependencies=frozenset(),
         ),
     ]

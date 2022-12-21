@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import bisect
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -125,22 +126,23 @@ class _RequirementTreeGraph:
                 self.inverse_graph[dependency].add(requirement_tree.req.name)
 
         self.no_incoming_nodes = []
+        for node, parents in self.inverse_graph.items():
+            if not parents:
+                bisect.insort(self.no_incoming_nodes, node)
 
     def get_requirement_tree(self, name: str) -> RequirementTree:
         return self.table[name]
 
     def next_node(self) -> str | None:
-        node = None
-        for node, parents in self.inverse_graph.items():
-            if not parents:
-                break
-
-        if node is None:
+        if not self.no_incoming_nodes:
             return None
+        node = self.no_incoming_nodes.pop()
 
         dependencies = self.graph[node]
         for dependency in dependencies:
             self.inverse_graph[dependency].remove(node)
+            if not self.inverse_graph[dependency]:
+                bisect.insort(self.no_incoming_nodes, dependency)
 
         del self.graph[node]
         del self.inverse_graph[node]
@@ -151,6 +153,13 @@ class _RequirementTreeGraph:
 def sorted_reverse_topological(
     requirement_trees: Iterable[RequirementTree],
 ) -> list[RequirementTree]:
+    """\
+    Returns the provided RequirementTrees sorted by:
+
+    - PRIMARY: Reverse topological order.
+    - SECONDARY: Lexicographic order.
+    """
+
     sorted_requirement_trees = []
     graph = _RequirementTreeGraph(requirement_trees)
     while (node := graph.next_node()) is not None:
