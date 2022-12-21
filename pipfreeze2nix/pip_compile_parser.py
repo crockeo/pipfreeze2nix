@@ -117,24 +117,35 @@ class _RequirementTreeGraph:
         for requirement_tree in requirement_trees:
             self.table[requirement_tree.req.name] = requirement_tree
             self.graph[requirement_tree.req.name] = set(requirement_tree.dependencies)
+
+            if requirement_tree.req.name not in self.inverse_graph:
+                self.inverse_graph[requirement_tree.req.name] = set()
+
             for dependency in requirement_tree.dependencies:
                 self.inverse_graph[dependency].add(requirement_tree.req.name)
+
+        self.no_incoming_nodes = []
 
     def get_requirement_tree(self, name: str) -> RequirementTree:
         return self.table[name]
 
     def next_node(self) -> str | None:
-        for k, v in self.inverse_graph.items():
-            if not v:
-                return k
-        return None
+        node = None
+        for node, parents in self.inverse_graph.items():
+            if not parents:
+                break
 
-    def dependencies(self, name: str) -> set[str]:
-        return self.graph[name]
+        if node is None:
+            return None
 
-    def remove(self, from_node: str, to_node: str) -> None:
-        self.graph[from_node].remove(to_node)
-        self.inverse_graph[to_node].remove(from_node)
+        dependencies = self.graph[node]
+        for dependency in dependencies:
+            self.inverse_graph[dependency].remove(node)
+
+        del self.graph[node]
+        del self.inverse_graph[node]
+
+        return node
 
 
 def sorted_reverse_topological(
@@ -144,7 +155,5 @@ def sorted_reverse_topological(
     graph = _RequirementTreeGraph(requirement_trees)
     while (node := graph.next_node()) is not None:
         sorted_requirement_trees.append(graph.get_requirement_tree(node))
-        for dependency in graph.dependencies(node):
-            graph.remove(node, dependency)
     sorted_requirement_trees.reverse()
     return sorted_requirement_trees

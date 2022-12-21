@@ -215,18 +215,50 @@ def test_sorted_reverse_topological(tmp_path):
         #
         --index-url https://pypi.org/simple/
 
-        certifi==2022.12.7
-            # via requests
-        charset-normalizer==2.1.1
-            # via requests
-        idna==3.4
-            # via requests
-        packaging==22.0
+        a==1.2.3
+            # via c
+        b==5.6.7
+            # via a
+        c==8.9.10
             # via -r requirements.in
-        requests==2.28.1
+        d==11.12.13
             # via -r requirements.in
-        urllib3==1.26.13
-            # via requests
+        e==14.15.16
+            # via c
         """
         )
     )
+
+    requirement_trees = pip_compile_parser.parse_compiled_requirements(
+        tmp_path / "requirements.txt",
+    )
+    sorted_requirement_trees = pip_compile_parser.sorted_reverse_topological(
+        requirement_trees
+    )
+    assert sorted_requirement_trees == [
+        pip_compile_parser.RequirementTree(
+            Requirement("b==5.6.7"),
+            is_direct=False,
+            dependencies=frozenset(),
+        ),
+        pip_compile_parser.RequirementTree(
+            Requirement("a==1.2.3"),
+            is_direct=False,
+            dependencies=frozenset("b"),
+        ),
+        pip_compile_parser.RequirementTree(
+            Requirement("d==11.12.13"),
+            is_direct=True,
+            dependencies=frozenset(),
+        ),
+        pip_compile_parser.RequirementTree(
+            Requirement("e==14.15.16"),
+            is_direct=False,
+            dependencies=frozenset(),
+        ),
+        pip_compile_parser.RequirementTree(
+            Requirement("c==8.9.10"),
+            is_direct=True,
+            dependencies=frozenset({"a", "e"}),
+        ),
+    ]
