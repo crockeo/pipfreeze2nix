@@ -82,7 +82,7 @@ def test_parse_requirement_segment__one_dep():
     ]
     assert pip_compile_parser.parse_segment(
         segment
-    ) == pip_compile_parser.InverseRequirementTree(
+    ) == pip_compile_parser._InverseRequirementTree(
         req=Requirement("urllib3==1.26.13"),
         is_direct=False,
         depended_on_by={"requests"},
@@ -98,7 +98,7 @@ def test_parse_requirement_segment__many_deps():
     ]
     assert pip_compile_parser.parse_segment(
         segment
-    ) == pip_compile_parser.InverseRequirementTree(
+    ) == pip_compile_parser._InverseRequirementTree(
         req=Requirement("click==7.1.2"),
         is_direct=False,
         depended_on_by={"flask", "pip-tools"},
@@ -112,7 +112,7 @@ def test_parse_requirement_segment__direct():
     ]
     assert pip_compile_parser.parse_segment(
         segment
-    ) == pip_compile_parser.InverseRequirementTree(
+    ) == pip_compile_parser._InverseRequirementTree(
         req=Requirement("packaging==22.0"),
         is_direct=True,
         depended_on_by=set(),
@@ -129,7 +129,7 @@ def test_parse_requirement_segment__direct_many_deps():
     ]
     assert pip_compile_parser.parse_segment(
         segment
-    ) == pip_compile_parser.InverseRequirementTree(
+    ) == pip_compile_parser._InverseRequirementTree(
         req=Requirement("click==7.1.2"),
         is_direct=True,
         depended_on_by={"flask", "pip-tools"},
@@ -167,35 +167,35 @@ def test_parse_compiled_requirements__simple(tmp_path):
     requirement_trees = pip_compile_parser.parse_compiled_requirements(
         tmp_path / "requirements.txt"
     )
-    assert requirement_trees == {
-        "certifi": pip_compile_parser.RequirementTree(
+    assert requirement_trees == [
+        pip_compile_parser.RequirementTree(
             req=Requirement("certifi==2022.12.7"),
             is_direct=False,
             dependencies=set(),
         ),
-        "charset-normalizer": pip_compile_parser.RequirementTree(
+        pip_compile_parser.RequirementTree(
             req=Requirement("charset-normalizer==2.1.1"),
             is_direct=False,
             dependencies=set(),
         ),
-        "idna": pip_compile_parser.RequirementTree(
+        pip_compile_parser.RequirementTree(
             req=Requirement("idna==3.4"),
             is_direct=False,
             dependencies=set(),
         ),
-        "packaging": pip_compile_parser.RequirementTree(
+        pip_compile_parser.RequirementTree(
             req=Requirement("packaging==22.0"),
             is_direct=True,
             dependencies=set(),
         ),
-        "requests": pip_compile_parser.RequirementTree(
+        pip_compile_parser.RequirementTree(
             req=Requirement("requests==2.28.1"),
             is_direct=True,
             dependencies={"certifi", "charset-normalizer", "idna", "urllib3"},
         ),
-        "urllib3": pip_compile_parser.RequirementTree(
+        pip_compile_parser.RequirementTree(
             req=Requirement("urllib3==1.26.13"),
             is_direct=False,
             dependencies=set(),
         ),
-    }
+    ]

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Generator
+from typing import Iterable
 
 from packaging.requirements import InvalidRequirement
 from packaging.requirements import Requirement
@@ -13,11 +16,11 @@ from pipfreeze2nix.exceptions import PipCompileInvariantError
 class RequirementTree:
     req: Requirement
     is_direct: bool
-    dependencies: set[str]
+    dependencies: frozenset[str]
 
 
 @dataclass(frozen=True)
-class InverseRequirementTree:
+class _InverseRequirementTree:
     req: Requirement
     is_direct: bool
     depended_on_by: set[str]
@@ -54,7 +57,7 @@ def segment_compiled_requirements(lines: list[str]) -> list[list[str]]:
     return segments
 
 
-def parse_segment(segment: list[str]) -> InverseRequirementTree:
+def parse_segment(segment: list[str]) -> _InverseRequirementTree:
     if not len(segment) >= 2:
         raise PipCompileInvariantError(
             "Each segment (requirement and `via` comments) "
@@ -80,28 +83,35 @@ def parse_segment(segment: list[str]) -> InverseRequirementTree:
     for i in reversed(to_remove):
         depended_on_by.pop(i)
 
-    return InverseRequirementTree(
+    return _InverseRequirementTree(
         req=req,
         is_direct=is_direct,
         depended_on_by=set(depended_on_by),
     )
 
 
-def parse_compiled_requirements(requirements_txt: Path) -> dict[str, RequirementTree]:
+def parse_compiled_requirements(requirements_txt: Path) -> list[RequirementTree]:
     lines = requirements_txt.read_text().splitlines()
     segments = segment_compiled_requirements(lines)
     inverse_trees = [parse_segment(segment) for segment in segments]
 
-    requirement_trees = {}
-    for inverse_tree in sorted(
-        inverse_trees,
-        key=lambda inverse_tree: len(inverse_tree.depended_on_by),
-    ):
-        requirement_trees[inverse_tree.req.name] = RequirementTree(
+    dependencies: dict[str, set[str]] = defaultdict(set)
+    for inverse_tree in inverse_trees:
+        for depender in inverse_tree.depended_on_by:
+            dependencies[depender].add(inverse_tree.req.name)
+
+    return [
+        RequirementTree(
             req=inverse_tree.req,
             is_direct=inverse_tree.is_direct,
-            dependencies=set(),
+            dependencies=frozenset(dependencies[inverse_tree.req.name]),
         )
-        for dependent in inverse_tree.depended_on_by:
-            requirement_trees[dependent].dependencies.add(inverse_tree.req.name)
-    return requirement_trees
+        for inverse_tree in inverse_trees
+    ]
+
+
+def iter_topological(
+    requirement_trees: Iterable[RequirementTree],
+) -> Generator[RequirementTree, None, None]:
+    for requirement_tree in requirement_trees:
+        yield requirement_tree

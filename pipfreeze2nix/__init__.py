@@ -13,6 +13,7 @@ from packaging.version import Version
 
 from pipfreeze2nix import pep503
 from pipfreeze2nix.exceptions import MissingArtifactError
+from pipfreeze2nix.pip_compile_parser import iter_topological
 from pipfreeze2nix.pip_compile_parser import parse_compiled_requirements
 from pipfreeze2nix.pip_compile_parser import RequirementTree
 
@@ -197,20 +198,15 @@ def main(args: list[str]) -> None:
     out_file_name = f"{in_file_name}.nix"
     out_file = in_file.parent / out_file_name
 
-    requirement_trees = sorted(
-        list(parse_compiled_requirements(in_file).values()),
-        key=lambda requirement_tree: len(requirement_tree.dependencies),
-    )
-
-    let_list = [
-        textwrap.indent(generate_build_python_package(requirement_tree), prefix="  ")
-        for requirement_tree in requirement_trees
-    ]
-    package_list = [
-        requirement_tree.req.name
-        for requirement_tree in requirement_trees
-        if requirement_tree.is_direct
-    ]
+    let_list = []
+    package_list = []
+    for requirement_tree in iter_topological(parse_compiled_requirements(in_file)):
+        let_list.append(
+            textwrap.indent(
+                generate_build_python_package(requirement_tree), prefix="  "
+            )
+        )
+        package_list.append(requirement_tree.req.name)
 
     out_file.write_text(
         FILE_TPL.format(
