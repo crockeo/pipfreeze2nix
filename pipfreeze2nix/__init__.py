@@ -10,6 +10,7 @@ from packaging.requirements import Requirement
 from packaging.tags import sys_tags
 from packaging.utils import parse_sdist_filename
 from packaging.utils import parse_wheel_filename
+from packaging.version import InvalidVersion
 from packaging.version import Version
 
 from pipfreeze2nix import pep503
@@ -91,7 +92,11 @@ def choose_wheel(
     compatible_tags = set(sys_tags())
     compatible_wheels = []
     for wheel in wheels:
-        _, version, _, tags = parse_wheel_filename(wheel.name)
+        try:
+            _, version, _, tags = parse_wheel_filename(wheel.name)
+        except InvalidVersion:
+            continue
+
         if version != pinned_version:
             continue
 
@@ -111,9 +116,17 @@ def choose_sdist(
 ) -> pep503.Artifact | None:
     compatible_sdists = []
     for artifact in artifacts:
-        _, version = parse_sdist_filename(artifact.name)
+        if not artifact.name.endswith(".tar.gz") or artifact.name.endswith(".zip"):
+            continue
+
+        try:
+            _, version = parse_sdist_filename(artifact.name)
+        except InvalidVersion:
+            continue
+
         if version != pinned_version:
             continue
+
         compatible_sdists.append(artifact)
 
     if not compatible_sdists:
@@ -210,9 +223,16 @@ def main(args: list[str]) -> None:
 
     let_list = []
     package_list = []
-    for requirement_tree in sorted_reverse_topological(
-        parse_compiled_requirements(in_file)
-    ):
+
+    requirement_trees = parse_compiled_requirements(in_file)
+    for i, requirement_tree in enumerate(sorted_reverse_topological(requirement_trees)):
+        msg = (
+            f"Processing {i + 1}/{len(requirement_trees)} "
+            f"({(i + 1) / len(requirement_trees):.2%}) "
+            f"{requirement_tree.req.name}"
+        )
+        print(msg, file=sys.stderr)
+
         let_list.append(
             textwrap.indent(
                 generate_build_python_package(requirement_tree), prefix="  "
