@@ -3,7 +3,10 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from html.parser import HTMLParser
+from pathlib import Path
 from typing import Optional
+from urllib.parse import urlsplit
+from urllib.parse import urlunsplit
 
 import requests
 
@@ -68,6 +71,26 @@ def get_index_url() -> str:
     return "https://pypi.org/simple/"
 
 
+def make_url_absolute(package_url: str, url: str) -> str:
+    _, netloc, path, query, fragment = urlsplit(url)
+    if netloc:
+        return url
+
+    package_scheme, package_netloc, package_path, _, _ = urlsplit(package_url)
+    package_path = Path(package_path)
+
+    path = Path(path)
+    if path.is_absolute():
+        result_path = path
+    else:
+        result_path = package_path / path
+    result_path = result_path.resolve()
+
+    return urlunsplit(
+        (package_scheme, package_netloc, str(result_path), query, fragment)
+    )
+
+
 def get_artifacts(package: str) -> list[Artifact]:
     index_url = get_index_url()
     res = requests.get(f"{index_url}{package}/")
@@ -75,4 +98,6 @@ def get_artifacts(package: str) -> list[Artifact]:
 
     parser = SimpleParser()
     parser.feed(res.text)
+    for artifact in parser.artifacts:
+        artifact.url = make_url_absolute(index_url, artifact.url)
     return parser.artifacts
