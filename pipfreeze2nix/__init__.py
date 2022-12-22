@@ -8,6 +8,7 @@ from pathlib import Path
 import requests
 from packaging.requirements import Requirement
 from packaging.tags import sys_tags
+from packaging.utils import parse_sdist_filename
 from packaging.utils import parse_wheel_filename
 from packaging.version import Version
 
@@ -108,8 +109,17 @@ def choose_wheel(
 def choose_sdist(
     artifacts: list[pep503.Artifact], name: str, pinned_version: Version
 ) -> pep503.Artifact | None:
-    # TODO: implement
-    pass
+    compatible_sdists = []
+    for artifact in artifacts:
+        _, version = parse_sdist_filename(artifact.name)
+        if version != pinned_version:
+            continue
+        compatible_sdists.append(artifact)
+
+    if not compatible_sdists:
+        return None
+
+    return compatible_sdists[0]
 
 
 def choose_artifact(req: Requirement) -> pep503.Artifact:
