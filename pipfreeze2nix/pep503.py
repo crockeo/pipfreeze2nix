@@ -24,8 +24,29 @@ class Artifact:
         return self.name.endswith(".whl")
 
 
+def make_url_absolute(package_url: str, url: str) -> str:
+    _, netloc, path, query, fragment = urlsplit(url)
+    if netloc:
+        return url
+
+    package_scheme, package_netloc, package_path, _, _ = urlsplit(package_url)
+    package_path = Path(package_path)
+
+    path = Path(path)
+    if path.is_absolute():
+        result_path = path
+    else:
+        result_path = package_path / path
+    result_path = result_path.resolve()
+
+    return urlunsplit(
+        (package_scheme, package_netloc, str(result_path), query, fragment)
+    )
+
+
 class SimpleParser(HTMLParser):
-    def __init__(self):
+    def __init__(self, package_url: str):
+        self.package_url = package_url
         super().__init__()
         self.artifacts = []
         self.last_tag = (
@@ -56,7 +77,7 @@ class SimpleParser(HTMLParser):
 
         self.artifacts.append(
             Artifact(
-                url=url,
+                url=make_url_absolute(self.package_url, url),
                 name=data,
                 sha256=sha256,
             ),
@@ -71,33 +92,11 @@ def get_index_url() -> str:
     return "https://pypi.org/simple/"
 
 
-def make_url_absolute(package_url: str, url: str) -> str:
-    _, netloc, path, query, fragment = urlsplit(url)
-    if netloc:
-        return url
-
-    package_scheme, package_netloc, package_path, _, _ = urlsplit(package_url)
-    package_path = Path(package_path)
-
-    path = Path(path)
-    if path.is_absolute():
-        result_path = path
-    else:
-        result_path = package_path / path
-    result_path = result_path.resolve()
-
-    return urlunsplit(
-        (package_scheme, package_netloc, str(result_path), query, fragment)
-    )
-
-
 def get_artifacts(package: str) -> list[Artifact]:
-    index_url = get_index_url()
-    res = requests.get(f"{index_url}{package}/")
+    package_url = f"{get_index_url()}{package}/"
+    res = requests.get(package_url)
     res.raise_for_status()
 
-    parser = SimpleParser()
+    parser = SimpleParser(package_url)
     parser.feed(res.text)
-    for artifact in parser.artifacts:
-        artifact.url = make_url_absolute(index_url, artifact.url)
     return parser.artifacts
